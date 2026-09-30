@@ -1,0 +1,10 @@
+# 蔚县剪纸网页版 —— 上传 GitHub 安全清单
+# 说明：本目录不含任何 API Key（火山 Key 只存在于 Cloudflare Workers 环境变量中）
+# 下方条目用于排除本地杂项，防止误传
+
+.DS_Store
+Thumbs.db
+*.log
+node_modules/
+.idea/
+.vscode/
