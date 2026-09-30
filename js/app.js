@@ -4,11 +4,34 @@
 (function () {
   'use strict';
 
-  /* 4 个底部 tab + 子视图（历史/工艺/AI/图纸定制） */
+  /* 4 个底部 tab + 子视图（历史/工艺/AI/图纸定制）+ 封面 */
   var TABS = ['home', 'hotel', 'creative', 'shop'];
   var SUBS = ['history', 'craft', 'ai', 'papercut'];
   var ALL = TABS.concat(SUBS);
   var lastTab = 'home';
+  var entered = false;
+
+  /* ---------- 封面页：上滑 / 点击进入 ---------- */
+  var cover = document.getElementById('view-cover');
+  function enterSite() {
+    if (entered) return;
+    entered = true;
+    cover.classList.remove('active');
+    document.getElementById('view-home').classList.add('active');
+    document.querySelector('.tabbar').classList.remove('hidden');
+    lastTab = 'home';
+    window.scrollTo(0, 0);
+  }
+  cover.addEventListener('click', enterSite);
+  var touchStartY = 0;
+  cover.addEventListener('touchstart', function (e) { touchStartY = e.touches[0].clientY; });
+  cover.addEventListener('touchend', function (e) {
+    var dy = touchStartY - e.changedTouches[0].clientY;
+    if (dy > 40) enterSite();
+  });
+  cover.addEventListener('wheel', function (e) {
+    if (e.deltaY > 20) enterSite();
+  });
 
   function gotoView(name) {
     if (ALL.indexOf(name) === -1) return;
