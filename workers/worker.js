@@ -6,7 +6,7 @@
  * 2. 把本文件内容粘贴到 Worker 代码区
  * 3. 在 Settings → Variables 添加：
  *      VOLCENGINE_API_KEY = 您的火山方舟 API Key（ark-xxx）
- *      MODEL = doubao-seedream-4-0-250828（可改新版本）
+ *      MODEL = doubao-seedream-4-0-20260415（新版模型，旧版 250828 已停权）
  * 4. Deploy 部署，获得形如 https://xxx.workers.dev 的地址
  * 5. 把该地址填到前端 js/config.js 的 WORKER_URL
  *
@@ -50,7 +50,7 @@ export default {
         }
 
         const payload = {
-          model: env.MODEL || 'doubao-seedream-4-0-250828',
+          model: env.MODEL || 'doubao-seedream-4-0-20260415',
           prompt: prompt,
           size: '1024x1024',
           response_format: 'url',
