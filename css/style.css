@@ -15,12 +15,17 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+html {
   background-color: var(--paper);
   background-image: url("../images/bg-pattern.png");
-  background-repeat: repeat;
-  background-size: 160px 160px;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center top;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: none;
   color: var(--ink);
   padding-bottom: 128px;
   max-width: 640px;
