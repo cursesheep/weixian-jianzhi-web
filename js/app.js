@@ -4,10 +4,10 @@
 (function () {
   'use strict';
 
-  /* 4 个底部 tab + 子视图（历史/工艺/AI/图纸定制）+ 封面 */
+  /* 4 个底部 tab + 子视图（历史/工艺/AI/图纸定制）+ 封面 + 一级目录 */
   var TABS = ['home', 'hotel', 'creative', 'shop'];
   var SUBS = ['history', 'craft', 'ai', 'papercut'];
-  var ALL = TABS.concat(SUBS);
+  var ALL = ['menu'].concat(TABS, SUBS);
   var lastTab = 'home';
   var entered = false;
 
@@ -17,9 +17,9 @@
     if (entered) return;
     entered = true;
     cover.classList.remove('active');
-    document.getElementById('view-home').classList.add('active');
+    document.getElementById('view-menu').classList.add('active');
     document.querySelector('.tabbar').classList.remove('hidden');
-    lastTab = 'home';
+    document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
     window.scrollTo(0, 0);
   }
   cover.addEventListener('click', enterSite);
@@ -55,6 +55,13 @@
   document.querySelectorAll('.tab').forEach(function (t) {
     t.addEventListener('click', function () {
       gotoView(t.dataset.goto);
+    });
+  });
+
+  /* 目录页菜单点击 */
+  document.querySelectorAll('#view-menu .menu-item').forEach(function (m) {
+    m.addEventListener('click', function () {
+      gotoView(m.dataset.goto);
     });
   });
 
