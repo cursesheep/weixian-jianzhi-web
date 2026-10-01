@@ -17,10 +17,10 @@
 
 html {
   background-color: var(--paper);
-  background-image: url("../images/bg-pattern.png");
+  background-image: url("../images/bg-board.jpg");
   background-repeat: no-repeat;
   background-size: cover;
-  background-position: center top;
+  background-position: center center;
 }
 
 body {
@@ -43,9 +43,16 @@ body {
 
 /* ===== 页眉（首页 / 定制页） ===== */
 .header { text-align: center; padding: 28px 0 30px; }
+.header-badge {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  display: block;
+  margin: 0 auto 14px;
+  box-shadow: 0 2px 12px rgba(62,42,30,.18);
+}
 .header-title {
   font-family: var(--kai);
-  font-size: 34px; font-weight: 600;
+  font-size: 36px; font-weight: 600;
   color: var(--red);
   letter-spacing: 10px; text-indent: 10px;
 }
@@ -418,6 +425,25 @@ body {
 .cover-veil {
   position: absolute; inset: 0;
   background: rgba(70, 15, 8, .16);
+}
+.cover-brand {
+  position: absolute;
+  left: 5%; top: 8%;
+  display: flex; flex-direction: column;
+  align-items: center;
+}
+.cover-badge {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  border: 2px solid rgba(232, 199, 102, .6);
+}
+.cover-brand-name {
+  font-family: var(--kai);
+  font-size: 17px;
+  color: #FBF4E4;
+  letter-spacing: 6px;
+  margin-top: 8px;
+  text-shadow: 0 2px 8px rgba(60, 10, 0, .6);
 }
 .cover-col {
   position: absolute;
