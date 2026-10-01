@@ -4,11 +4,10 @@
 (function () {
   'use strict';
 
-  /* 4 个底部 tab + 子视图（历史/工艺/AI/图纸定制）+ 封面 + 一级目录 */
+  /* 视图集合（封面 / 一级目录 / 主视图 / 子视图） */
   var TABS = ['home', 'hotel', 'creative', 'shop'];
   var SUBS = ['history', 'craft', 'ai', 'papercut'];
   var ALL = ['menu'].concat(TABS, SUBS);
-  var lastTab = 'home';
   var entered = false;
 
   /* ---------- 封面页：上滑 / 点击进入 ---------- */
@@ -18,8 +17,6 @@
     entered = true;
     cover.classList.remove('active');
     document.getElementById('view-menu').classList.add('active');
-    document.querySelector('.tabbar').classList.remove('hidden');
-    document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
     window.scrollTo(0, 0);
   }
   cover.addEventListener('click', enterSite);
@@ -33,30 +30,20 @@
     if (e.deltaY > 20) enterSite();
   });
 
+  /* ---------- 视图切换 ---------- */
+  var btnBackMenu = document.getElementById('btn-back-menu');
   function gotoView(name) {
     if (ALL.indexOf(name) === -1) return;
     ALL.forEach(function (v) {
       document.getElementById('view-' + v).classList.toggle('active', v === name);
     });
-    document.querySelectorAll('.tab').forEach(function (t) {
-      t.classList.toggle('active', t.dataset.goto === name);
-    });
-    var tabbar = document.querySelector('.tabbar');
-    if (SUBS.indexOf(name) !== -1) {
-      tabbar.classList.add('hidden');
-    } else {
-      tabbar.classList.remove('hidden');
-      lastTab = name;
+    /* 除目录页外，显示「返回目录」按钮 */
+    if (btnBackMenu) {
+      btnBackMenu.classList.toggle('show', name !== 'menu');
     }
     window.scrollTo(0, 0);
   }
-
-  /* 顶部 tab 点击 */
-  document.querySelectorAll('.tab').forEach(function (t) {
-    t.addEventListener('click', function () {
-      gotoView(t.dataset.goto);
-    });
-  });
+  window.__goMenu = function () { gotoView('menu'); };
 
   /* 目录页菜单点击 */
   document.querySelectorAll('#view-menu .menu-item').forEach(function (m) {
@@ -75,7 +62,7 @@
   /* 子页返回按钮 */
   document.querySelectorAll('[data-back]').forEach(function (b) {
     b.addEventListener('click', function () {
-      gotoView(lastTab);
+      gotoView('menu');
     });
   });
 

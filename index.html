@@ -504,45 +504,27 @@ body {
   50% { transform: translateX(-50%) translateY(-6px); }
 }
 
-/* ===== 底部导航（4 tab） ===== */
-.tabbar {
+/* ===== 返回目录浮动按钮 ===== */
+.back-menu {
   position: fixed;
-  bottom: 0; left: 0; right: 0;
-  max-width: 640px; margin: 0 auto;
-  height: 116px;
-  padding-bottom: env(safe-area-inset-bottom);
-  background: rgba(255, 253, 248, .97);
-  border-top: 2px solid var(--gold);
-  box-shadow: 0 -6px 24px rgba(60, 30, 10, .1);
-  display: flex;
-  z-index: 90;
-}
-.tab {
-  flex: 1;
-  border: none; background: none;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 5px;
-  font-size: 11px; color: var(--ink-sub);
-  letter-spacing: 1px;
+  top: 14px; left: 14px;
+  z-index: 95;
+  display: none;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 14px;
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: var(--ink);
+  background: rgba(255, 253, 248, .94);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: 0 2px 10px rgba(62, 42, 30, .12);
+  font-family: var(--kai);
   cursor: pointer;
-  font-family: inherit;
 }
-.tab-seal {
-  width: 28px; height: 28px;
-  border: 1.5px solid var(--gold);
-  border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--kai); font-size: 15px; font-weight: 700;
-  color: #B08A3E;
-  transition: all .2s ease;
-}
-.tab.active { color: var(--red); font-weight: 600; }
-.tab.active .tab-seal {
-  background: var(--red); border-color: var(--red);
-  color: #FFFDF8;
-  transform: scale(1.08);
-  box-shadow: 0 3px 10px rgba(158,43,37,.35);
-}
+.back-menu.show { display: flex; }
+.back-menu:active { transform: scale(.97); }
 
 </style>
 </head>
@@ -940,14 +922,8 @@ body {
   </div>
 </div>
 
-<!-- ============ 底部导航（4 tab，与小程序一致） ============ -->
-<nav class="tabbar">
-  <button class="tab" data-goto="menu"><span class="tab-seal">目</span>目录</button>
-  <button class="tab active" data-goto="home"><span class="tab-seal">首</span>首页</button>
-  <button class="tab" data-goto="hotel"><span class="tab-seal">游</span>体验项目</button>
-  <button class="tab" data-goto="creative"><span class="tab-seal">创</span>个性定制</button>
-  <button class="tab" data-goto="shop"><span class="tab-seal">品</span>文创产品</button>
-</nav>
+<!-- ============ 返回目录浮动按钮（JS 动态控制显隐） ============ -->
+<button id="btn-back-menu" class="back-menu" onclick="window.__goMenu && window.__goMenu()">‹ 目录</button>
 
 <script>
 /* ============================================================
@@ -964,11 +940,10 @@ window.CONFIG = {
 (function () {
   'use strict';
 
-  /* 4 个底部 tab + 子视图（历史/工艺/AI/图纸定制）+ 封面 + 一级目录 */
+  /* 视图集合（封面 / 一级目录 / 主视图 / 子视图） */
   var TABS = ['home', 'hotel', 'creative', 'shop'];
   var SUBS = ['history', 'craft', 'ai', 'papercut'];
   var ALL = ['menu'].concat(TABS, SUBS);
-  var lastTab = 'home';
   var entered = false;
 
   /* ---------- 封面页：上滑 / 点击进入 ---------- */
@@ -978,8 +953,6 @@ window.CONFIG = {
     entered = true;
     cover.classList.remove('active');
     document.getElementById('view-menu').classList.add('active');
-    document.querySelector('.tabbar').classList.remove('hidden');
-    document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
     window.scrollTo(0, 0);
   }
   cover.addEventListener('click', enterSite);
@@ -993,30 +966,20 @@ window.CONFIG = {
     if (e.deltaY > 20) enterSite();
   });
 
+  /* ---------- 视图切换 ---------- */
+  var btnBackMenu = document.getElementById('btn-back-menu');
   function gotoView(name) {
     if (ALL.indexOf(name) === -1) return;
     ALL.forEach(function (v) {
       document.getElementById('view-' + v).classList.toggle('active', v === name);
     });
-    document.querySelectorAll('.tab').forEach(function (t) {
-      t.classList.toggle('active', t.dataset.goto === name);
-    });
-    var tabbar = document.querySelector('.tabbar');
-    if (SUBS.indexOf(name) !== -1) {
-      tabbar.classList.add('hidden');
-    } else {
-      tabbar.classList.remove('hidden');
-      lastTab = name;
+    /* 除目录页外，显示「返回目录」按钮 */
+    if (btnBackMenu) {
+      btnBackMenu.classList.toggle('show', name !== 'menu');
     }
     window.scrollTo(0, 0);
   }
-
-  /* 顶部 tab 点击 */
-  document.querySelectorAll('.tab').forEach(function (t) {
-    t.addEventListener('click', function () {
-      gotoView(t.dataset.goto);
-    });
-  });
+  window.__goMenu = function () { gotoView('menu'); };
 
   /* 目录页菜单点击 */
   document.querySelectorAll('#view-menu .menu-item').forEach(function (m) {
@@ -1035,7 +998,7 @@ window.CONFIG = {
   /* 子页返回按钮 */
   document.querySelectorAll('[data-back]').forEach(function (b) {
     b.addEventListener('click', function () {
-      gotoView(lastTab);
+      gotoView('menu');
     });
   });
 
