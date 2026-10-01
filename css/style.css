@@ -47,7 +47,9 @@ body {
   width: 108px; height: 120px;
   display: block;
   margin: 0 auto 14px;
-  filter: drop-shadow(0 4px 14px rgba(62,42,30,.25));
+  border: 1.5px solid rgba(201,162,39,.55);
+  border-radius: 12px;
+  box-shadow: 0 5px 16px rgba(62,42,30,.15);
 }
 .header-title {
   font-family: var(--kai);
@@ -456,7 +458,9 @@ body {
 }
 .cover-badge {
   width: 96px; height: 107px;
-  filter: drop-shadow(0 4px 14px rgba(60,10,0,.4));
+  border: 1.5px solid rgba(232,199,102,.5);
+  border-radius: 11px;
+  box-shadow: 0 4px 14px rgba(30,12,4,.35);
 }
 .cover-col {
   position: absolute;
