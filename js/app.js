@@ -6,7 +6,7 @@
 
   /* 视图集合（封面 / 一级目录 / 主视图 / 子视图） */
   var TABS = ['home', 'hotel', 'creative', 'shop'];
-  var SUBS = ['history', 'craft', 'ai', 'papercut'];
+  var SUBS = ['ai', 'papercut'];
   var ALL = ['menu'].concat(TABS, SUBS);
   var entered = false;
 
