@@ -71,56 +71,126 @@ body {
 }
 
 /* ===== 目录页 ===== */
+#view-menu { position: relative; overflow: hidden; }
+/* 背景角落剪纸团花装饰 */
+#view-menu::before {
+  content: "";
+  position: absolute; top: -70px; right: -70px;
+  width: 230px; height: 230px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(158,43,37,.06) 0 20px, transparent 20.5px),
+    repeating-radial-gradient(circle at 50% 50%, transparent 0 13px, rgba(158,43,37,.05) 13px 13.5px);
+  pointer-events: none;
+  z-index: 0;
+}
+#view-menu::after {
+  content: "";
+  position: absolute; bottom: -60px; left: -60px;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(201,162,39,.08) 0 17px, transparent 17.5px),
+    repeating-radial-gradient(circle at 50% 50%, transparent 0 11px, rgba(201,162,39,.06) 11px 11.5px);
+  pointer-events: none;
+  z-index: 0;
+}
+#view-menu .page { position: relative; z-index: 1; }
 .menu-list { display: flex; flex-direction: column; gap: 14px; }
 .menu-item {
   position: relative;
   display: flex; align-items: center;
   background: linear-gradient(180deg, #FFFEFB 0%, var(--card) 100%);
-  border: 1px solid #E8D9BE;
+  border: 1px solid #D9C29A;
   border-radius: 16px;
   padding: 17px 16px;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.6), 0 3px 14px rgba(62,42,30,.06);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.75), 0 3px 14px rgba(62,42,30,.06);
   cursor: pointer;
+  transition: transform .22s ease, box-shadow .22s ease, background .22s ease;
 }
-/* 四角描金角花（左上 + 右下回纹角） */
+/* 顶部双色条：绛红 + 描金 */
 .menu-item::before {
   content: "";
-  position: absolute; top: 6px; left: 6px;
-  width: 12px; height: 12px;
-  border-top: 2px solid var(--gold);
-  border-left: 2px solid var(--gold);
-  border-top-left-radius: 5px;
-  opacity: .75;
+  position: absolute; top: 0; left: 23px; right: 23px;
+  height: 2px; border-radius: 0 0 2px 2px;
+  background: linear-gradient(90deg, transparent, #9E2B25 32%, var(--gold) 68%, transparent);
 }
+/* 内部回纹细框 */
 .menu-item::after {
   content: "";
-  position: absolute; bottom: 6px; right: 6px;
-  width: 12px; height: 12px;
-  border-bottom: 2px solid var(--gold);
-  border-right: 2px solid var(--gold);
-  border-bottom-right-radius: 5px;
-  opacity: .75;
+  position: absolute; top: 5px; left: 5px; right: 5px; bottom: 5px;
+  border: 1px solid rgba(201,162,39,.4);
+  border-radius: 10px;
+  pointer-events: none;
 }
 .menu-item:active { transform: scale(.985); background: #FBF3E2; }
 .menu-item:active .menu-arrow { transform: translateX(4px); color: var(--red); border-color: rgba(158,43,37,.6); }
-/* 印章式序号章：朱红圆印 + 外金环 + 刻痕 */
+/* 四角回纹角花 */
+.corner-tl, .corner-br { position: absolute; width: 15px; height: 15px; opacity: .9; z-index: 1; }
+.corner-tl {
+  top: 7px; left: 7px;
+  border-top: 1.5px solid var(--gold);
+  border-left: 1.5px solid var(--gold);
+  border-top-left-radius: 5px;
+}
+.corner-tl::after {
+  content: ""; position: absolute; top: 1px; left: 1px;
+  width: 4px; height: 4px;
+  border-top: 1.5px solid var(--red);
+  border-left: 1.5px solid var(--red);
+  border-top-left-radius: 2px;
+}
+.corner-br {
+  bottom: 7px; right: 7px;
+  border-bottom: 1.5px solid var(--gold);
+  border-right: 1.5px solid var(--gold);
+  border-bottom-right-radius: 5px;
+}
+.corner-br::after {
+  content: ""; position: absolute; bottom: 1px; right: 1px;
+  width: 4px; height: 4px;
+  border-bottom: 1.5px solid var(--red);
+  border-right: 1.5px solid var(--red);
+  border-bottom-right-radius: 2px;
+}
+/* 印章式序号章：绛红剪纸团花（阴刻字 + 放射刻痕 + 齿状金环） */
 .menu-no {
   font-family: var(--kai);
-  font-size: 18px; color: #FFFDF8;
-  width: 42px; height: 42px; line-height: 42px;
-  text-align: center; margin-right: 14px; flex-shrink: 0;
-  background:
-    radial-gradient(circle at 30% 28%, rgba(255,255,255,.22), transparent 42%),
-    var(--red);
+  font-size: 19px; color: #FFFDF8;
+  width: 44px; height: 44px;
+  margin-right: 14px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
   border-radius: 50%;
-  border: 2px solid rgba(201,162,39,.65);
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255,255,255,.26), transparent 42%),
+    repeating-radial-gradient(circle at 50% 50%, transparent 0 6px, rgba(255,253,248,.13) 6px 6.7px),
+    linear-gradient(145deg, #B3392F 0%, var(--red) 60%, #7E2019 100%);
+  border: 2px solid rgba(201,162,39,.75);
   box-shadow:
     0 0 0 3px rgba(158,43,37,.13),
-    inset 0 -3px 6px rgba(90,20,16,.35);
+    0 3px 7px rgba(158,43,37,.3),
+    inset 0 -3px 6px rgba(90,20,16,.4);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+/* 齿状外环（剪纸锯齿边） */
+.menu-no::after {
+  content: "";
+  position: absolute; inset: -6px;
+  border-radius: 50%;
+  border: 1px dashed rgba(201,162,39,.5);
+  pointer-events: none;
+}
+.no-char {
+  font-family: var(--kai);
+  font-size: 20px; color: #FFFDF8;
+  line-height: 1; position: relative; z-index: 2;
+  text-shadow: 0 1px 1px rgba(60,20,15,.35);
 }
 .menu-main { flex: 1; }
 .menu-title { font-size: 16px; font-weight: 600; color: var(--ink); letter-spacing: 2px; }
 .menu-desc { font-size: 12px; color: var(--ink-sub); margin-top: 4px; letter-spacing: .5px; }
+.desc-mark { color: var(--red); font-size: 9px; margin-right: 3px; opacity: .8; }
 /* 金环箭头 */
 .menu-arrow {
   width: 26px; height: 26px; line-height: 24px;
@@ -128,6 +198,8 @@ body {
   font-size: 17px; color: #B08A3E;
   border: 1.5px solid rgba(201,162,39,.55);
   border-radius: 50%;
+  background: linear-gradient(180deg, rgba(255,253,248,.9), rgba(247,238,218,.9));
+  box-shadow: 0 1px 4px rgba(62,42,30,.08);
   transition: all .25s ease;
 }
 
@@ -593,40 +665,48 @@ body {
   <div class="page">
     <div class="header">
       <img class="header-badge" src="images/badge-full.png" alt="智剪蔚来">
-      <p class="header-sub">剪纸千年韵 · 智绘新蔚来</p>
+      <p class="header-sub">❖ 剪纸千年韵 · 智绘新蔚来 ❖</p>
       <div class="header-line"></div>
     </div>
 
     <div class="menu-list">
       <div class="menu-item" data-goto="home">
-        <span class="menu-no">壹</span>
+        <span class="corner-tl"></span>
+        <span class="corner-br"></span>
+        <span class="menu-no"><span class="no-char">壹</span></span>
         <div class="menu-main">
           <div class="menu-title">蔚县剪纸</div>
-          <div class="menu-desc">五百年传承 · 阴刻点染独特技艺</div>
+          <div class="menu-desc"><span class="desc-mark">◆</span>五百年传承 · 阴刻点染独特技艺</div>
         </div>
         <span class="menu-arrow">›</span>
       </div>
       <div class="menu-item" data-goto="hotel">
-        <span class="menu-no">贰</span>
+        <span class="corner-tl"></span>
+        <span class="corner-br"></span>
+        <span class="menu-no"><span class="no-char">贰</span></span>
         <div class="menu-main">
           <div class="menu-title">体验项目</div>
-          <div class="menu-desc">三分刀工七分染，亲手体验非遗</div>
+          <div class="menu-desc"><span class="desc-mark">◆</span>三分刀工七分染，亲手体验非遗</div>
         </div>
         <span class="menu-arrow">›</span>
       </div>
       <div class="menu-item" data-goto="creative">
-        <span class="menu-no">叁</span>
+        <span class="corner-tl"></span>
+        <span class="corner-br"></span>
+        <span class="menu-no"><span class="no-char">叁</span></span>
         <div class="menu-main">
           <div class="menu-title">个性定制</div>
-          <div class="menu-desc">AI 剪纸生成，你的专属图案</div>
+          <div class="menu-desc"><span class="desc-mark">◆</span>AI 剪纸生成，你的专属图案</div>
         </div>
         <span class="menu-arrow">›</span>
       </div>
       <div class="menu-item" data-goto="shop">
-        <span class="menu-no">肆</span>
+        <span class="corner-tl"></span>
+        <span class="corner-br"></span>
+        <span class="menu-no"><span class="no-char">肆</span></span>
         <div class="menu-main">
           <div class="menu-title">文创产品</div>
-          <div class="menu-desc">光影灯饰 · 文创好物 · 匠心之选</div>
+          <div class="menu-desc"><span class="desc-mark">◆</span>光影灯饰 · 文创好物 · 匠心之选</div>
         </div>
         <span class="menu-arrow">›</span>
       </div>
