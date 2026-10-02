@@ -588,7 +588,6 @@ body {
   <span class="cover-up">上滑进入</span>
 </section>
 
-
 <!-- ============ 目录页（一级目录） ============ -->
 <section class="view" id="view-menu">
   <div class="page">
@@ -909,7 +908,7 @@ body {
       <div id="aiStatus" class="ai-status hidden"></div>
 
       <div id="aiResult" class="hidden">
-        <div class="card-header"><span class="seal-small">选</span><h2>四幅候选 · 挑选一张</h2></div>
+        <div class="card-header"><span class="seal-small">成</span><h2>生成一幅 · 点击放大</h2></div>
         <div class="result-grid" id="resultGrid"></div>
         <p class="form-tip">点击图片放大预览；网页版为轻量版，未做碎片剔除后处理。</p>
       </div>
@@ -974,11 +973,15 @@ body {
 
 <script>
 /* ============================================================
-   部署时请把 WORKER_URL 改成您的 Cloudflare Workers 地址
-   例如：https://jiance-worker.xxx.workers.dev
+   蔚县剪纸 · AI 生图配置（Cloudflare Worker 中转模式）
+   网页端不保存 API Key，由 Worker 代为调用火山方舟，
+   Key 仅存于 Cloudflare Worker 的环境变量中。
+   部署 Worker 后把 WORKER_URL 改成你的 Worker 地址，
+   例如：https://jiance-ai-proxy.xxx.workers.dev
    ============================================================ */
 window.CONFIG = {
-  WORKER_URL: "https://YOUR-WORKER.workers.dev"
+  WORKER_URL: "",
+  SEEDREAM_MODEL: "doubao-seedream-4-0-20260415"
 };
 
 /* ============================================================
@@ -1075,6 +1078,32 @@ window.CONFIG = {
   var resultEl = document.getElementById('aiResult');
   var resultGrid = document.getElementById('resultGrid');
 
+  /* AI 生成经 Cloudflare Worker 中转（Key 不暴露给前端） */
+  function getWorkerApi() {
+    var w = window.CONFIG && window.CONFIG.WORKER_URL;
+    return w ? w.replace(/\/+$/, '') + '/generate' : '';
+  }
+
+  /* 文生图强化连体提示词（与后端同步） */
+  var STYLE_PROMPT = '正宗蔚县剪纸风格，中国国家级非物质文化遗产。' +
+    '阴刻为主、阳刻为辅的刻纸技法，红色图案、纯白底。' +
+    '构图饱满充实、上下均衡、左右严格对称，实多于虚、面强于线。' +
+    '整体必须一刀刻成、浑然一体：所有图案元素经由枝条、轮廓或边沿自然相接，' +
+    '全图红色图案为单一连通的完整刻纸，绝对不允许出现完全断离的碎片、悬空小点或断裂的线条。' +
+    '人物五官细节（眼睛、眉毛、鼻翼）必须与面部轮廓或发丝线条自然相连，不得悬空独立；' +
+    '花蕊、叶尖、流苏端点等细小元素必须附着于枝蔓或主体，不得孤立。' +
+    '刀工精细流畅，造型生动传神，镂空艺术，传统民间美术。' +
+    '高清细节，商用印刷级品质。画面纯净，不得出现任何文字、字母、数字、水印或标注';
+
+  /* 图生图（照片转剪纸） */
+  var IMG2IMG_PROMPT = '正宗蔚县剪纸风格，红白配色，阴刻镂空。将照片中的人物转化为红白剪纸作品：' +
+    '严格保留人物的脸型、五官比例、发型与服装款式轮廓，形神兼备、一眼可辨是同一个人；' +
+    '所有颜色一律转为剪纸红（头发、衣服、肤色全为红色图案，背景纯白），绝不允许保留照片的任何原色；' +
+    '五官通过面部轮廓内的镂空线条表现并与面部自然相连为一体，头发为完整轮廓块，不碎成细丝；' +
+    '不添加旗袍、汉服、头饰、花环、背景景物等任何额外元素；全图红色图案单一连通一体成型，构图端正，画面纯净无文字。要求：';
+
+  var NEGATIVE_PROMPT = '文字,字幕,字母,数字,水印,签名,印章,标注,题字,商标,logo,字符,彩色,肤色,独立五官,分离碎片,悬空小块,断线,残片,旗袍,汉服,古装,头饰,花环,发簪,额外装饰,背景景物';
+
   function setStatus(msg, isError) {
     statusEl.textContent = msg;
     statusEl.classList.toggle('hidden', !msg);
@@ -1140,12 +1169,16 @@ window.CONFIG = {
     if (mode === 'text') {
       prompt = document.getElementById('aiPromptText').value.trim();
       if (!prompt) { setStatus('请先输入描述文字', true); return; }
-      payload = { prompt: prompt };
+      payload = { prompt: STYLE_PROMPT + '，主题：' + prompt };
     } else {
       prompt = document.getElementById('aiPromptImage').value.trim() ||
         '保持主体轮廓与神态，转化为蔚县剪纸风格，红白配色，线条连通';
       if (!photoDataUrl) { setStatus('请先上传一张照片', true); return; }
-      payload = { prompt: prompt, imageBase64: photoDataUrl.split(',')[1] };
+      payload = {
+        prompt: IMG2IMG_PROMPT + prompt,
+        image: photoDataUrl,
+        guidance_scale: 4
+      };
     }
 
     setStatus('正在生成剪纸图案，约需 30–60 秒，请稍候…');
@@ -1153,21 +1186,38 @@ window.CONFIG = {
     document.getElementById('genTextBtn').disabled = true;
     document.getElementById('genImageBtn').disabled = true;
 
-    fetch(window.CONFIG.WORKER_URL + '/generate', {
+    var api = getWorkerApi();
+    if (!api) {
+      setStatus('AI 生图服务尚未配置（请先部署 Worker 并填入 WORKER_URL）', true);
+      document.getElementById('genTextBtn').disabled = false;
+      document.getElementById('genImageBtn').disabled = false;
+      return;
+    }
+
+    fetch(api, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        model: window.CONFIG.SEEDREAM_MODEL,
+        prompt: payload.prompt,
+        size: '1024x1024',
+        response_format: 'url',
+        watermark: false,
+        negative_prompt: NEGATIVE_PROMPT,
+        image: payload.image || null,
+        guidance_scale: payload.guidance_scale || null
+      })
     })
       .then(function (res) { return res.json(); })
       .then(function (data) {
-        if (!data.success) {
-          throw new Error(data.error || '生成失败，请稍后重试');
+        if (!data.data || !data.data.length) {
+          throw new Error((data.error && data.error.message) || '生成失败，请稍后重试');
         }
-        renderResult(data.images || []);
+        renderResult(data.data.map(function (x) { return x.url; }).filter(Boolean));
         setStatus('');
       })
       .catch(function (err) {
-        setStatus('生成失败：' + (err.message || '网络异常，请检查云函数是否已部署'), true);
+        setStatus('生成失败：' + (err.message || '网络异常，请检查网络后重试'), true);
       })
       .finally(function () {
         document.getElementById('genTextBtn').disabled = false;
@@ -1212,24 +1262,14 @@ window.CONFIG = {
     var url = downloadBtn.dataset.url;
     if (!url) return;
     downloadBtn.textContent = '下载中…';
-    fetch(window.CONFIG.WORKER_URL + '/proxy?url=' + encodeURIComponent(url))
-      .then(function (res) {
-        if (!res.ok) throw new Error('下载失败');
-        return res.blob();
-      })
-      .then(function (blob) {
-        var a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'weixian-jiance-' + Date.now() + '.png';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
-        downloadBtn.textContent = '下载图片';
-      })
-      .catch(function () {
-        downloadBtn.textContent = '下载图片';
-        alert('下载失败，请长按图片保存');
-      });
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'weixian-jiance-' + Date.now() + '.png';
+    a.target = '_blank';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { a.remove(); downloadBtn.textContent = '下载图片'; }, 800);
   });
 
 })();
