@@ -280,18 +280,23 @@
     if (e.target === lightbox) lightbox.classList.add('hidden');
   });
 
+  /* 生成图存放在对象存储，未开放跨域读取，浏览器无法直接另存为文件；
+     统一在新窗口打开原图，由用户长按 / 右键保存，避免“点了没反应”的误解。 */
   downloadBtn.addEventListener('click', function () {
     var url = downloadBtn.dataset.url;
     if (!url) return;
-    downloadBtn.textContent = '下载中…';
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'weixian-jiance-' + Date.now() + '.png';
-    a.target = '_blank';
-    a.rel = 'noopener';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(function () { a.remove(); downloadBtn.textContent = '下载图片'; }, 800);
+    var opened = window.open(url, '_blank', 'noopener');
+    if (!opened) {
+      var a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+    downloadBtn.textContent = '已打开原图，长按或右键保存';
+    setTimeout(function () { downloadBtn.textContent = '保存原图'; }, 2600);
   });
 
 })();
