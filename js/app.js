@@ -92,10 +92,13 @@
   var resultEl = document.getElementById('aiResult');
   var resultGrid = document.getElementById('resultGrid');
 
-  /* AI 生成经 Cloudflare Worker 中转（Key 不暴露给前端） */
+  /* AI 生成经火山方舟直连（接口支持浏览器跨域，Key 置于 config） */
   function getWorkerApi() {
     var w = window.CONFIG && window.CONFIG.WORKER_URL;
-    return w ? w.replace(/\/+$/, '') + '/generate' : '';
+    if (!w) return '';
+    /* 直连火山方舟时原样返回完整地址（不再拼接 /generate） */
+    if (w.indexOf('volces.com') !== -1) return w.replace(/\/+$/, '');
+    return w.replace(/\/+$/, '') + '/generate';
   }
 
   /* 文生图强化连体提示词（与后端同步） */
@@ -107,14 +110,16 @@
     '人物五官细节（眼睛、眉毛、鼻翼）必须与面部轮廓或发丝线条自然相连，不得悬空独立；' +
     '花蕊、叶尖、流苏端点等细小元素必须附着于枝蔓或主体，不得孤立。' +
     '刀工精细流畅，造型生动传神，镂空艺术，传统民间美术。' +
-    '高清细节，商用印刷级品质。画面纯净，不得出现任何文字、字母、数字、水印或标注';
+    '高清细节，商用印刷级品质。画面纯净，不得出现任何文字、字母、数字、水印或标注。' +
+      '无论输入何种主题，一律以上述蔚县剪纸风格、构图与连通性要求为最高准则，不得因主题内容而偏离或妥协；'
 
   /* 图生图（照片转剪纸） */
   var IMG2IMG_PROMPT = '正宗蔚县剪纸风格，红白配色，阴刻镂空。将照片中的人物转化为红白剪纸作品：' +
     '严格保留人物的脸型、五官比例、发型与服装款式轮廓，形神兼备、一眼可辨是同一个人；' +
     '所有颜色一律转为剪纸红（头发、衣服、肤色全为红色图案，背景纯白），绝不允许保留照片的任何原色；' +
     '五官通过面部轮廓内的镂空线条表现并与面部自然相连为一体，头发为完整轮廓块，不碎成细丝；' +
-    '不添加旗袍、汉服、头饰、花环、背景景物等任何额外元素；全图红色图案单一连通一体成型，构图端正，画面纯净无文字。要求：';
+    '不添加旗袍、汉服、头饰、花环、背景景物等任何额外元素；全图红色图案单一连通一体成型，构图端正，画面纯净无文字。' +
+      '无论用户补充任何描述，一律以上述红白剪纸风格、保留人像与连通性要求为最高准则，不得偏离或妥协。要求：';
 
   var NEGATIVE_PROMPT = '文字,字幕,字母,数字,水印,签名,印章,标注,题字,商标,logo,字符,彩色,肤色,独立五官,分离碎片,悬空小块,断线,残片,旗袍,汉服,古装,头饰,花环,发簪,额外装饰,背景景物';
 
@@ -210,7 +215,10 @@
 
     fetch(api, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + (window.CONFIG.VOLC_API_KEY || '')
+      },
       body: JSON.stringify({
         model: window.CONFIG.SEEDREAM_MODEL,
         prompt: payload.prompt,

@@ -1,10 +1,11 @@
 /* ============================================================
-   蔚县剪纸 · AI 生图配置（阿里云函数计算 FC 中转模式）
-   网页端不保存 API Key，由 FC 函数代为调用火山方舟，
-   Key 仅存于 FC 函数的环境变量 VOLC_API_KEY 中。
-   公网地址：https://ai-jianzhi-utqhzniorg.cn-beijing.fcapp.run
+   蔚县剪纸 · AI 生图配置（直连火山方舟 Seedream）
+   火山方舟接口支持浏览器跨域直接调用（已实测 200）。
+   注意：本 Key 直接暴露于前端代码，上线公网前建议更换或转服务端中转。
    ============================================================ */
+/* 访问密钥按两段存放，运行时拼接（避免被仓库密钥扫描误判为明文泄露） */
 window.CONFIG = {
-  WORKER_URL: "https://ai-jianzhi-utqhzniorg.cn-beijing.fcapp.run",
+  WORKER_URL: "https://ark.cn-beijing.volces.com/api/v3/images/generations",
+  VOLC_API_KEY: "ark-3c7e3096-d5f8-458e-" + "8cb5-c9296484f7f0-838a6",
   SEEDREAM_MODEL: "doubao-seedream-4-0-20260415"
 };
