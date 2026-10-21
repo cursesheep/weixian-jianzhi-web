@@ -1161,6 +1161,57 @@ window.CONFIG = {
   });
 
   /* 生成 */
+  /* 单次请求：带超时中断，统一返回 {ok,status,data} */
+  function requestOnce(api, body, timeoutMs) {
+    var ctrl = new AbortController();
+    var timer = setTimeout(function () { ctrl.abort(); }, timeoutMs);
+    return fetch(api, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + (window.CONFIG.VOLC_API_KEY || '')
+      },
+      body: body,
+      signal: ctrl.signal
+    }).then(function (res) {
+      clearTimeout(timer);
+      var ct = res.headers.get('content-type') || '';
+      var parsed = ct.indexOf('json') !== -1
+        ? res.json()
+        : res.text().then(function (t) {
+          try { return JSON.parse(t); } catch (e) { return { __raw: t }; }
+        });
+      return parsed.then(function (data) {
+        return { ok: res.ok, status: res.status, data: data };
+      });
+    }, function (err) {
+      clearTimeout(timer);
+      throw err;
+    });
+  }
+
+  /* 把底层异常翻译成现场能看懂的话 */
+  function friendlyError(err) {
+    if (err && err.name === 'AbortError') {
+      return '生成超时，可能是网络较慢，请再点一次生成';
+    }
+    var s = err && err.status;
+    if (s === 401 || s === 403) {
+      return '生图服务密钥无效或已过期（' + s + '），请更新配置中的密钥';
+    }
+    if (s === 429) {
+      return '调用过于频繁或额度不足，请等一分钟再试';
+    }
+    if (s && s >= 500) {
+      return '生图服务暂时不可用（' + s + '），请稍后重试';
+    }
+    var m = (err && err.message) || '网络异常';
+    if (/Failed to fetch|NetworkError|Load failed|fetch/i.test(m)) {
+      return '网络连接失败，请检查网络后重试';
+    }
+    return '生成失败：' + m;
+  }
+
   function generate() {
     var prompt, payload;
     if (mode === 'text') {
@@ -1178,48 +1229,76 @@ window.CONFIG = {
       };
     }
 
-    setStatus('正在生成剪纸图案，约需 30–60 秒，请稍候…');
+    setStatus('正在生成剪纸图案，请稍候…');
     resultEl.classList.add('hidden');
     document.getElementById('genTextBtn').disabled = true;
     document.getElementById('genImageBtn').disabled = true;
 
     var api = getWorkerApi();
     if (!api) {
-      setStatus('AI 生图服务尚未配置（请先部署 Worker 并填入 WORKER_URL）', true);
+      setStatus('AI 生图服务尚未配置，请填写 CONFIG 中的 WORKER_URL', true);
       document.getElementById('genTextBtn').disabled = false;
       document.getElementById('genImageBtn').disabled = false;
       return;
     }
 
-    fetch(api, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + (window.CONFIG.VOLC_API_KEY || '')
-      },
-      body: JSON.stringify({
-        model: window.CONFIG.SEEDREAM_MODEL,
-        prompt: payload.prompt,
-        size: '1024x1024',
-        response_format: 'url',
-        watermark: false,
-        negative_prompt: NEGATIVE_PROMPT,
-        image: payload.image || null,
-        guidance_scale: payload.guidance_scale || null
-      })
-    })
-      .then(function (res) { return res.json(); })
-      .then(function (data) {
-        if (!data.data || !data.data.length) {
-          throw new Error((data.error && data.error.message) || '生成失败，请稍后重试');
+    var reqBody = JSON.stringify({
+      model: window.CONFIG.SEEDREAM_MODEL,
+      prompt: payload.prompt,
+      size: '1024x1024',
+      response_format: 'url',
+      watermark: false,
+      negative_prompt: NEGATIVE_PROMPT,
+      image: payload.image || null,
+      guidance_scale: payload.guidance_scale || null
+    });
+
+    /* 图生图需额外传图，官方耗时更长，给更宽的窗口 */
+    var timeoutMs = payload.image ? 90000 : 70000;
+
+    var t0 = Date.now();
+    var tick = setInterval(function () {
+      var sec = Math.round((Date.now() - t0) / 1000);
+      setStatus('正在生成剪纸图案，已用 ' + sec + ' 秒，请稍候…');
+    }, 1000);
+
+    function attempt(n) {
+      return requestOnce(api, reqBody, timeoutMs).then(function (r) {
+        if (r.ok) {
+          var d = r.data;
+          if (!d.data || !d.data.length) {
+            var e0 = new Error((d.error && d.error.message) || '返回结果为空');
+            e0.status = r.status;
+            throw e0;
+          }
+          return d;
         }
+        var raw = r.data && (r.data.__raw ||
+          (r.data.error && (r.data.error.message || r.data.error.code)));
+        var e = new Error(raw ? String(raw).slice(0, 120) : ('HTTP ' + r.status));
+        e.status = r.status;
+        throw e;
+      }).catch(function (err) {
+        /* 仅网络类／超时／5xx 重试；401、429 重试无意义 */
+        var retriable = !err.status || err.status >= 500 || err.name === 'AbortError';
+        if (n < 2 && retriable) {
+          setStatus('网络波动，正在自动重试…');
+          return attempt(n + 1);
+        }
+        throw err;
+      });
+    }
+
+    attempt(1)
+      .then(function (data) {
         renderResult(data.data.map(function (x) { return x.url; }).filter(Boolean));
         setStatus('');
       })
       .catch(function (err) {
-        setStatus('生成失败：' + (err.message || '网络异常，请检查网络后重试'), true);
+        setStatus(friendlyError(err), true);
       })
       .finally(function () {
+        clearInterval(tick);
         document.getElementById('genTextBtn').disabled = false;
         document.getElementById('genImageBtn').disabled = false;
       });
