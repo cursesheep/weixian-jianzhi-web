@@ -534,6 +534,40 @@ body {
   transition: transform .15s ease;
 }
 .result-grid img:active { transform: scale(.96); }
+/* 四张候选：每格一个容器，含角标与选中态 */
+.result-cell { position: relative; }
+.result-cell img { display: block; }
+.result-cell.selected img {
+  border: 2px solid var(--red);
+  box-shadow: 0 2px 10px rgba(158, 43, 37, .22);
+}
+.cell-tag {
+  position: absolute; left: 7px; top: 7px; z-index: 2;
+  min-width: 20px; text-align: center;
+  padding: 1px 7px; border-radius: 20px;
+  font-size: 11px; line-height: 17px; letter-spacing: 1px;
+  color: var(--red); background: rgba(255, 253, 248, .94);
+  border: 1px solid var(--line);
+}
+.result-cell.selected .cell-tag {
+  color: #FFF; background: var(--red); border-color: var(--red);
+}
+/* 生成中的占位格 */
+.cell-skeleton {
+  height: 168px; border-radius: 10px;
+  border: 1px dashed var(--line); background: #FBF5EA;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 6px;
+  font-size: 11px; color: var(--ink-sub);
+}
+.cell-skeleton::after {
+  content: ""; width: 26px; height: 2px; border-radius: 2px;
+  background: var(--gold); opacity: .5;
+  animation: sk 1.1s ease-in-out infinite;
+}
+@keyframes sk { 0%,100% { transform: scaleX(.4); opacity: .3 } 50% { transform: scaleX(1); opacity: .85 } }
+.cell-skeleton.failed::after { display: none; }
+.cell-fail { font-size: 11px; color: var(--ink-sub); line-height: 1.6; text-align: center; padding: 0 6px; }
 
 /* ===== 文创 ===== */
 .product-card { display: flex; flex-direction: column; gap: 14px; }
@@ -898,9 +932,9 @@ body {
       <div id="aiStatus" class="ai-status hidden"></div>
 
       <div id="aiResult" class="hidden">
-        <div class="card-header"><span class="seal-small">成</span><h2>生成一幅 · 点击放大</h2></div>
+        <div class="card-header"><span class="seal-small">成</span><h2>四张候选 · 择一放大</h2></div>
         <div class="result-grid" id="resultGrid"></div>
-        <p class="form-tip">点击图片放大预览；网页版为轻量版，未做碎片剔除后处理。</p>
+        <p class="form-tip">一次生成四张，点选其中一张放大预览并保存；网页版为轻量版，未做碎片剔除后处理。</p>
       </div>
     </div>
   </div>
@@ -1212,6 +1246,14 @@ window.CONFIG = {
     return '生成失败：' + m;
   }
 
+  /* 四个候选方向：文字生成看构图，照片转换看刀法笔触 */
+  var CANDIDATES = [
+    { key: 'A', text: '六折对称团花构图', photo: '线条简洁利落，留白充足', seed: 1021 },
+    { key: 'B', text: '八折对称团花构图', photo: '线条繁密细腻，纹样丰富', seed: 2039 },
+    { key: 'C', text: '圆形适合纹样构图', photo: '轮廓浑厚饱满，块面分明', seed: 3079 },
+    { key: 'D', text: '菱形开光构图',     photo: '细密锯齿纹，刀味浓重', seed: 4093 }
+  ];
+
   function generate() {
     var prompt, payload;
     if (mode === 'text') {
@@ -1242,82 +1284,141 @@ window.CONFIG = {
       return;
     }
 
-    var reqBody = JSON.stringify({
-      model: window.CONFIG.SEEDREAM_MODEL,
-      prompt: payload.prompt,
-      size: '1024x1024',
-      response_format: 'url',
-      watermark: false,
-      negative_prompt: NEGATIVE_PROMPT,
-      image: payload.image || null,
-      guidance_scale: payload.guidance_scale || null
+    /* 四张候选：用固定的 seed 基数加随机偏移，配合构图／笔法差异，
+       保证四张互不相同，同时不改动用户写的主体描述。 */
+    var jitter = Math.floor(Math.random() * 900);
+    var plans = CANDIDATES.map(function (c) {
+      var extra = payload.image ? c.photo : c.text;
+      return {
+        key: c.key,
+        body: JSON.stringify({
+          model: window.CONFIG.SEEDREAM_MODEL,
+          prompt: payload.prompt + '，' + extra,
+          size: '1024x1024',
+          response_format: 'url',
+          watermark: false,
+          negative_prompt: NEGATIVE_PROMPT,
+          image: payload.image || null,
+          guidance_scale: payload.guidance_scale || null,
+          seed: c.seed + jitter
+        })
+      };
     });
 
     /* 图生图需额外传图，官方耗时更长，给更宽的窗口 */
     var timeoutMs = payload.image ? 90000 : 70000;
 
-    var t0 = Date.now();
-    var tick = setInterval(function () {
-      var sec = Math.round((Date.now() - t0) / 1000);
-      setStatus('正在生成剪纸图案，已用 ' + sec + ' 秒，请稍候…');
-    }, 1000);
+    /* 先铺四个占位格，哪张先回来就先填哪张，不必等整批 */
+    resultGrid.innerHTML = '';
+    var cells = plans.map(function (pl) {
+      var cell = document.createElement('div');
+      cell.className = 'result-cell';
+      var tag = document.createElement('span');
+      tag.className = 'cell-tag';
+      tag.textContent = pl.key;
+      var sk = document.createElement('div');
+      sk.className = 'cell-skeleton';
+      sk.textContent = '生成中';
+      cell.appendChild(tag);
+      cell.appendChild(sk);
+      resultGrid.appendChild(cell);
+      return { cell: cell, sk: sk };
+    });
+    resultEl.classList.remove('hidden');
 
-    function attempt(n) {
-      return requestOnce(api, reqBody, timeoutMs).then(function (r) {
-        if (r.ok) {
-          var d = r.data;
-          if (!d.data || !d.data.length) {
-            var e0 = new Error((d.error && d.error.message) || '返回结果为空');
-            e0.status = r.status;
-            throw e0;
+    var t0 = Date.now();
+    var done = 0;
+    var okCount = 0;
+    var firstErr = null;
+
+    function progress() {
+      var sec = Math.round((Date.now() - t0) / 1000);
+      setStatus('正在生成四张候选，已用 ' + sec + ' 秒（已完成 ' + done + '/4）…');
+    }
+    var tick = setInterval(progress, 1000);
+    progress();
+
+    function fill(i, url, err) {
+      done += 1;
+      var c = cells[i];
+      if (err) {
+        c.sk.className = 'cell-skeleton failed';
+        c.sk.textContent = '';
+        var sp = document.createElement('span');
+        sp.className = 'cell-fail';
+        sp.textContent = '这一张未生成成功';
+        c.sk.appendChild(sp);
+      } else {
+        okCount += 1;
+        var img = document.createElement('img');
+        img.src = url;
+        img.alt = '剪纸候选 ' + plans[i].key;
+        img.addEventListener('click', function () {
+          cells.forEach(function (x) { x.cell.classList.remove('selected'); });
+          c.cell.classList.add('selected');
+          openLightbox(url);
+        });
+        c.cell.replaceChild(img, c.sk);
+      }
+
+      if (done < plans.length) { progress(); return; }
+
+      /* 整批结束 */
+      clearInterval(tick);
+      document.getElementById('genTextBtn').disabled = false;
+      document.getElementById('genImageBtn').disabled = false;
+      var spent = Math.round((Date.now() - t0) / 1000);
+      if (okCount === 0) {
+        setStatus(friendlyError(firstErr), true);
+      } else if (okCount < plans.length) {
+        setStatus('已生成 ' + okCount + ' 张候选（' + spent + ' 秒），另有 ' +
+          (plans.length - okCount) + ' 张未成功，可再点一次生成', true);
+      } else {
+        setStatus('四张候选已就绪（' + spent + ' 秒），点选一张放大预览');
+      }
+    }
+
+    function runOne(i) {
+      function attempt(n) {
+        return requestOnce(api, plans[i].body, timeoutMs).then(function (r) {
+          if (r.ok) {
+            var u = r.data && r.data.data && r.data.data[0] && r.data.data[0].url;
+            if (!u) {
+              var e0 = new Error((r.data && r.data.error && r.data.error.message) || '返回结果为空');
+              e0.status = r.status;
+              throw e0;
+            }
+            return u;
           }
-          return d;
-        }
-        var raw = r.data && (r.data.__raw ||
-          (r.data.error && (r.data.error.message || r.data.error.code)));
-        var e = new Error(raw ? String(raw).slice(0, 120) : ('HTTP ' + r.status));
-        e.status = r.status;
-        throw e;
-      }).catch(function (err) {
-        /* 仅网络类／超时／5xx 重试；401、429 重试无意义 */
-        var retriable = !err.status || err.status >= 500 || err.name === 'AbortError';
-        if (n < 2 && retriable) {
-          setStatus('网络波动，正在自动重试…');
-          return attempt(n + 1);
-        }
-        throw err;
+          var raw = r.data && (r.data.__raw ||
+            (r.data.error && (r.data.error.message || r.data.error.code)));
+          var e = new Error(raw ? String(raw).slice(0, 120) : ('HTTP ' + r.status));
+          e.status = r.status;
+          throw e;
+        }).catch(function (err) {
+          /* 超时不重试：四路并行时重试会让整批等待翻倍。
+             401/429 同样不重试，重试无意义。 */
+          var retriable = err.name !== 'AbortError' && (!err.status || err.status >= 500);
+          if (n < 2 && retriable) {
+            setStatus('网络波动，正在自动重试…');
+            return attempt(n + 1);
+          }
+          throw err;
+        });
+      }
+      attempt(1).then(function (url) {
+        fill(i, url, null);
+      }, function (err) {
+        if (!firstErr) firstErr = err;
+        fill(i, null, err);
       });
     }
 
-    attempt(1)
-      .then(function (data) {
-        renderResult(data.data.map(function (x) { return x.url; }).filter(Boolean));
-        setStatus('');
-      })
-      .catch(function (err) {
-        setStatus(friendlyError(err), true);
-      })
-      .finally(function () {
-        clearInterval(tick);
-        document.getElementById('genTextBtn').disabled = false;
-        document.getElementById('genImageBtn').disabled = false;
-      });
+    plans.forEach(function (_, i) { runOne(i); });
   }
 
   document.getElementById('genTextBtn').addEventListener('click', generate);
   document.getElementById('genImageBtn').addEventListener('click', generate);
-
-  function renderResult(images) {
-    resultGrid.innerHTML = '';
-    images.forEach(function (url) {
-      var img = document.createElement('img');
-      img.src = url;
-      img.alt = '剪纸候选';
-      img.addEventListener('click', function () { openLightbox(url); });
-      resultGrid.appendChild(img);
-    });
-    resultEl.classList.remove('hidden');
-  }
 
   /* ---------- 图片预览 + 下载（经云函数代理） ---------- */
   var lightbox = document.getElementById('lightbox');
