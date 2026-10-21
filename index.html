@@ -1397,11 +1397,16 @@ window.CONFIG = {
           throw e;
         }).catch(function (err) {
           /* 超时不重试：四路并行时重试会让整批等待翻倍。
-             401/429 同样不重试，重试无意义。 */
-          var retriable = err.name !== 'AbortError' && (!err.status || err.status >= 500);
-          if (n < 2 && retriable) {
-            setStatus('网络波动，正在自动重试…');
-            return attempt(n + 1);
+             401/429 同样不重试，重试无意义。
+             方舟的 CORS 预检不带缓存（max-age: 0），四路并发时预检偶发被拒，
+             表现为没有状态码的网络错误——这类才值得退避重试。 */
+          var netFail = !err.status;
+          var retriable = err.name !== 'AbortError' && (netFail || err.status >= 500);
+          var maxTry = netFail ? 3 : 2;
+          if (n < maxTry && retriable) {
+            return new Promise(function (res) {
+              setTimeout(res, netFail ? 700 * n : 400);
+            }).then(function () { return attempt(n + 1); });
           }
           throw err;
         });
@@ -1414,7 +1419,10 @@ window.CONFIG = {
       });
     }
 
-    plans.forEach(function (_, i) { runOne(i); });
+    /* 错峰 280ms 发起：预检不缓存，同时打四个容易被拒掉一个 */
+    plans.forEach(function (_, i) {
+      setTimeout(function () { runOne(i); }, i * 280);
+    });
   }
 
   document.getElementById('genTextBtn').addEventListener('click', generate);
